@@ -1,0 +1,102 @@
+# CI/CD Pipeline for Staging Branch
+# Triggers on push to staging branch
+
+name: Staging CI/CD
+
+on:
+  push:
+    branches: [staging]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+jobs:
+  # Run all tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Copy ML data
+        run: |
+          mkdir -p backend/ml_data
+          cp ml/data/*.csv backend/ml_data/ 2>/dev/null || echo "No ML data to copy"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          pytest tests/ -v --tb=short
+
+  # Build and push Docker images
+  docker-build-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:staging
+            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:staging
+            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=${{ secrets.STAGING_API_URL }}
+
+  # Deploy to staging environment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    environment: staging
+    
+    steps:
+      - name: Deploy notification
+        run: |
+          echo "🚀 Docker images pushed to DockerHub"
+          echo "Backend: ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:staging"
+          echo "Frontend: ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:staging"
+          echo ""
+          echo "To deploy to staging, pull these images on your staging server"

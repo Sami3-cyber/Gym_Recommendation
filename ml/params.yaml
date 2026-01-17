@@ -1,0 +1,11 @@
+# ML Model Parameters
+model:
+  max_features: 5000
+  ngram_range: [1, 2]
+  min_df: 2
+  max_df: 0.95
+  stop_words: english
+
+training:
+  test_size: 0.2
+  random_state: 42  

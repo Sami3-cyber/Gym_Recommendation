@@ -1,0 +1,25 @@
+# DVC Configuration
+# Data Version Control for ML data and models
+
+stages:
+  prepare_data:
+    cmd: python ml/create_dataset.py
+    deps:
+      - ml/create_dataset.py
+    outs:
+      - ml/data/megaGymDataset.csv
+
+  train_model:
+    cmd: python ml/train_model.py
+    deps:
+      - ml/data/megaGymDataset.csv
+      - ml/train_model.py
+    params:
+      - ml/params.yaml:
+          - model.max_features
+          - model.ngram_range
+    outs:
+      - ml/models/recommendation_model.joblib
+    metrics:
+      - ml/metrics.json:
+          cache: false

@@ -1,0 +1,10 @@
+{
+  "num_exercises": 2918,
+  "vocabulary_size": 5000,
+  "matrix_shape": [
+    2918,
+    5000
+  ],
+  "timestamp": "2026-01-17T08:33:49.420714",
+  "test_recommendations_count": 5
+}
