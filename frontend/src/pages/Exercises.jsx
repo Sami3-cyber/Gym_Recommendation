@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { exercisesApi } from '../services/api';
+import { exercisesApi, usersApi } from '../services/api';
 import ExerciseCard from '../components/ExerciseCard';
 
 function Exercises() {
@@ -10,6 +10,7 @@ function Exercises() {
         levels: [],
         types: []
     });
+    const [favorites, setFavorites] = useState([]);
 
     const [selectedFilters, setSelectedFilters] = useState({
         body_part: '',
@@ -25,6 +26,7 @@ function Exercises() {
 
     useEffect(() => {
         loadFilters();
+        loadFavorites();
     }, []);
 
     useEffect(() => {
@@ -42,6 +44,41 @@ function Exercises() {
             });
         } catch (err) {
             console.error('Error loading filters:', err);
+        }
+    };
+
+    const loadFavorites = async () => {
+        const userId = localStorage.getItem('gymrec_user_id');
+        if (!userId) return;
+
+        try {
+            const data = await usersApi.getFavorites(userId);
+            setFavorites(data);
+        } catch (err) {
+            console.error('Error loading favorites:', err);
+        }
+    };
+
+    const handleToggleFavorite = async (exercise) => {
+        const userId = localStorage.getItem('gymrec_user_id');
+        if (!userId) {
+            alert("Please create a profile to save favorites!");
+            return;
+        }
+
+        const fav = favorites.find(f => f.exercise_title === exercise.title);
+
+        try {
+            if (fav) {
+                await usersApi.removeFavorite(userId, fav.id);
+                setFavorites(prev => prev.filter(f => f.id !== fav.id));
+            } else {
+                const newFav = await usersApi.addFavorite(userId, exercise.title);
+                setFavorites(prev => [...prev, newFav]);
+            }
+        } catch (err) {
+            console.error('Error toggling favorite:', err);
+            // Don't alert for common errors, just log
         }
     };
 
@@ -181,7 +218,12 @@ function Exercises() {
                 <>
                     <div className="card-grid">
                         {exercises.map((exercise) => (
-                            <ExerciseCard key={exercise.id} exercise={exercise} />
+                            <ExerciseCard
+                                key={exercise.id}
+                                exercise={exercise}
+                                isFavorite={favorites.some(f => f.exercise_title === exercise.title)}
+                                onToggle={handleToggleFavorite}
+                            />
                         ))}
                     </div>
 

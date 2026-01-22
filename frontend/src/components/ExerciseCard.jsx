@@ -1,13 +1,43 @@
-function ExerciseCard({ exercise, showSimilarity = false }) {
+import { useState } from 'react';
+
+function ExerciseCard({ exercise, showSimilarity = false, isFavorite = false, onToggle }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
     const truncateText = (text, maxLength = 100) => {
         if (!text) return '';
-        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        if (text.length <= maxLength) return text;
+        return isExpanded ? text : text.substring(0, maxLength) + '...';
     };
 
     return (
         <div className="exercise-card">
+            {onToggle && (
+                <button
+                    className={`favorite-btn ${isFavorite ? 'active' : ''}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggle(exercise);
+                    }}
+                    title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                    {isFavorite ? '❤️' : '🤍'}
+                </button>
+            )}
             <h3>{exercise.title}</h3>
-            <p>{truncateText(exercise.description)}</p>
+            <div className="description-container">
+                <p>{truncateText(exercise.description)}</p>
+                {exercise.description && exercise.description.length > 100 && (
+                    <button
+                        className="read-more-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                        }}
+                    >
+                        {isExpanded ? 'Show Less' : 'Read More'}
+                    </button>
+                )}
+            </div>
 
             <div className="exercise-meta">
                 {exercise.body_part && (

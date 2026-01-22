@@ -2,20 +2,53 @@
 Recommendations API Router
 """
 from fastapi import APIRouter, HTTPException
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-import pandas as pd
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 import os
 import joblib
+import pandas as pd
+
+# Import the shared model class
+from app.ml.recommendation_model import GymRecommendationModel
 
 router = APIRouter()
 
 # Path to the exercise dataset and model
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "data", "megaGymDataset.csv")
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "models", "recommendation_model.joblib")
+def get_data_path():
+    # Priority 1: Docker/Production path (ml_data in app root)
+    docker_path = os.path.join(os.getcwd(), "ml_data", "megaGymDataset.csv")
+    if os.path.exists(docker_path):
+        return docker_path
+    
+    # Priority 2: Local development path (relative to this file)
+    local_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "data", "megaGymDataset.csv")
+    if os.path.exists(local_path):
+        return local_path
+        
+    return local_path
+
+def get_model_path():
+    # Priority 1: CI/CD Downloaded Path (inside app/ml/models)
+    # The CI workflow downloads it to backend/app/ml/models/
+    # And Docker copies backend/ to /app/
+    ci_path = os.path.join(os.path.dirname(__file__), "..", "ml", "models", "recommendation_model.joblib")
+    if os.path.exists(ci_path):
+        return ci_path
+
+    # Priority 2: Docker volume mount (if using volumes)
+    docker_vol_path = os.path.join(os.getcwd(), "ml_models", "recommendation_model.joblib")
+    if os.path.exists(docker_vol_path):
+        return docker_vol_path
+        
+    # Priority 3: Local development path
+    local_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "models", "recommendation_model.joblib")
+    if os.path.exists(local_path):
+        return local_path
+        
+    return local_path
+
+DATA_PATH = get_data_path()
+MODEL_PATH = get_model_path()
 
 
 class RecommendationRequest(BaseModel):
@@ -48,158 +81,35 @@ class RecommendationResponse(BaseModel):
     filters_applied: dict
 
 
-def load_exercises() -> pd.DataFrame:
-    """Load exercises from CSV file"""
-    if not os.path.exists(DATA_PATH):
-        return pd.DataFrame()
-    
-    df = pd.read_csv(DATA_PATH)
-    # Clean column names
-    df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
-    return df
+# Initialize model
+recommendation_model = GymRecommendationModel()
 
-
-def create_feature_text(row) -> str:
-    """Create combined feature text for TF-IDF"""
-    parts = []
-    
-    if pd.notna(row.get('title')):
-        parts.append(str(row['title']))
-    if pd.notna(row.get('desc')):
-        parts.append(str(row['desc']))
-    if pd.notna(row.get('type')):
-        parts.append(str(row['type']))
-    if pd.notna(row.get('bodypart')):
-        parts.append(str(row['bodypart']))
-    if pd.notna(row.get('equipment')):
-        parts.append(str(row['equipment']))
-    if pd.notna(row.get('level')):
-        parts.append(str(row['level']))
-    
-    return ' '.join(parts).lower()
-
-
-class RecommendationEngine:
-    """Content-based recommendation engine"""
-    
-    def __init__(self):
-        self.df = None
-        self.tfidf_vectorizer = None
-        self.tfidf_matrix = None
-        self.is_fitted = False
-    
-    def fit(self, df: pd.DataFrame):
-        """Fit the recommendation model"""
-        self.df = df.copy()
-        
-        # Create feature text
-        self.df['feature_text'] = self.df.apply(create_feature_text, axis=1)
-        
-        # Create TF-IDF matrix
-        self.tfidf_vectorizer = TfidfVectorizer(
-            stop_words='english',
-            max_features=5000,
-            ngram_range=(1, 2)
-        )
-        self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.df['feature_text'])
-        self.is_fitted = True
-    
-    def recommend(
-        self,
-        body_part: Optional[str] = None,
-        equipment: Optional[str] = None,
-        level: Optional[str] = None,
-        exercise_type: Optional[str] = None,
-        limit: int = 10,
-        exclude_exercises: Optional[List[str]] = None
-    ) -> List[dict]:
-        """Get exercise recommendations based on filters"""
-        
-        if not self.is_fitted:
-            df = load_exercises()
-            if df.empty:
-                return []
-            self.fit(df)
-        
-        # Start with all exercises
-        mask = pd.Series([True] * len(self.df))
-        
-        # Apply filters
-        if body_part:
-            mask &= self.df['bodypart'].str.lower() == body_part.lower()
-        if equipment:
-            mask &= self.df['equipment'].str.lower() == equipment.lower()
-        if level:
-            mask &= self.df['level'].str.lower() == level.lower()
-        if exercise_type:
-            mask &= self.df['type'].str.lower() == exercise_type.lower()
-        if exclude_exercises:
-            exclude_lower = [e.lower() for e in exclude_exercises]
-            mask &= ~self.df['title'].str.lower().isin(exclude_lower)
-        
-        filtered_df = self.df[mask]
-        
-        if filtered_df.empty:
-            return []
-        
-        # Create user query from filters
-        query_parts = []
-        if body_part:
-            query_parts.append(body_part)
-        if equipment:
-            query_parts.append(equipment)
-        if level:
-            query_parts.append(level)
-        if exercise_type:
-            query_parts.append(exercise_type)
-        
-        if query_parts:
-            query = ' '.join(query_parts).lower()
-            query_vector = self.tfidf_vectorizer.transform([query])
-            
-            # Calculate similarity for filtered exercises
-            filtered_indices = filtered_df.index.tolist()
-            filtered_matrix = self.tfidf_matrix[filtered_indices]
-            similarities = cosine_similarity(query_vector, filtered_matrix)[0]
-            
-            # Add similarity scores
-            filtered_df = filtered_df.copy()
-            filtered_df['similarity'] = similarities
-            
-            # Sort by similarity and rating
-            filtered_df = filtered_df.sort_values(
-                by=['similarity', 'rating'],
-                ascending=[False, False]
-            )
+def initialize_model():
+    """Initialize the model by loading from disk or fitting on data"""
+    try:
+        if os.path.exists(MODEL_PATH):
+            print(f"Loading model from {MODEL_PATH}")
+            recommendation_model.load(MODEL_PATH)
         else:
-            # No filters, sort by rating
-            filtered_df = filtered_df.copy()
-            filtered_df['similarity'] = 1.0
-            filtered_df = filtered_df.sort_values(by='rating', ascending=False)
-        
-        # Limit results
-        filtered_df = filtered_df.head(limit)
-        
-        # Convert to list of dicts
-        results = []
-        for idx, row in filtered_df.iterrows():
-            results.append({
-                'id': idx,
-                'title': row.get('title', ''),
-                'description': row.get('desc', ''),
-                'type': row.get('type', ''),
-                'body_part': row.get('bodypart', ''),
-                'equipment': row.get('equipment', ''),
-                'level': row.get('level', ''),
-                'rating': row.get('rating') if pd.notna(row.get('rating')) else None,
-                'similarity_score': round(row.get('similarity', 0), 4)
-            })
-        
-        return results
+            print(f"Model file not found at {MODEL_PATH}. Training new model...")
+            if os.path.exists(DATA_PATH):
+                df = pd.read_csv(DATA_PATH)
+                # Clean column names
+                df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+                recommendation_model.fit(df)
+            else:
+                print(f"Data file not found at {DATA_PATH}. Model initialization failed.")
+    except Exception as e:
+        print(f"Error initializing model: {e}")
+        # Fallback to training
+        if os.path.exists(DATA_PATH):
+             print("Fallback: Training model on data...")
+             df = pd.read_csv(DATA_PATH)
+             df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+             recommendation_model.fit(df)
 
-
-# Global recommendation engine instance
-recommendation_engine = RecommendationEngine()
+# Initialize on module load
+initialize_model()
 
 
 @router.post("/", response_model=RecommendationResponse)
@@ -207,31 +117,41 @@ async def get_recommendations(request: RecommendationRequest):
     """
     Get personalized exercise recommendations based on user preferences
     """
-    recommendations = recommendation_engine.recommend(
-        body_part=request.body_part,
-        equipment=request.equipment,
-        level=request.level,
-        exercise_type=request.exercise_type,
-        limit=request.limit,
-        exclude_exercises=request.exclude_exercises
-    )
-    
-    recommended_exercises = [
-        RecommendedExercise(**rec) for rec in recommendations
-    ]
-    
-    filters_applied = {
-        "body_part": request.body_part,
-        "equipment": request.equipment,
-        "level": request.level,
-        "exercise_type": request.exercise_type
-    }
-    
-    return RecommendationResponse(
-        recommendations=recommended_exercises,
-        total_found=len(recommended_exercises),
-        filters_applied={k: v for k, v in filters_applied.items() if v is not None}
-    )
+    if not recommendation_model.is_fitted:
+        # Try to initialize again
+        initialize_model()
+        if not recommendation_model.is_fitted:
+             raise HTTPException(status_code=500, detail="Recommendation model could not be initialized")
+
+    try:
+        recommendations = recommendation_model.recommend(
+            body_part=request.body_part,
+            equipment=request.equipment,
+            level=request.level,
+            exercise_type=request.exercise_type,
+            limit=request.limit,
+            exclude_exercises=request.exclude_exercises
+        )
+        
+        recommended_exercises = [
+            RecommendedExercise(**rec) for rec in recommendations
+        ]
+        
+        filters_applied = {
+            "body_part": request.body_part,
+            "equipment": request.equipment,
+            "level": request.level,
+            "exercise_type": request.exercise_type
+        }
+        
+        return RecommendationResponse(
+            recommendations=recommended_exercises,
+            total_found=len(recommended_exercises),
+            filters_applied={k: v for k, v in filters_applied.items() if v is not None}
+        )
+    except Exception as e:
+        print(f"Error generating recommendations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/similar/{exercise_id}")
@@ -239,37 +159,16 @@ async def get_similar_exercises(exercise_id: int, limit: int = 5):
     """
     Get exercises similar to a given exercise
     """
-    if not recommendation_engine.is_fitted:
-        df = load_exercises()
-        if df.empty:
-            raise HTTPException(status_code=404, detail="No exercise data available")
-        recommendation_engine.fit(df)
+    if not recommendation_model.is_fitted:
+         initialize_model()
+         if not recommendation_model.is_fitted:
+            raise HTTPException(status_code=500, detail="Recommendation model not initialized")
     
-    df = recommendation_engine.df
-    
-    if exercise_id < 0 or exercise_id >= len(df):
-        raise HTTPException(status_code=404, detail="Exercise not found")
-    
-    # Get similarity for the given exercise
-    exercise_vector = recommendation_engine.tfidf_matrix[exercise_id]
-    similarities = cosine_similarity(exercise_vector, recommendation_engine.tfidf_matrix)[0]
-    
-    # Get top similar exercises (excluding itself)
-    similar_indices = similarities.argsort()[::-1][1:limit+1]
-    
-    results = []
-    for idx in similar_indices:
-        row = df.iloc[idx]
-        results.append({
-            'id': int(idx),
-            'title': row.get('title', ''),
-            'description': row.get('desc', ''),
-            'type': row.get('type', ''),
-            'body_part': row.get('bodypart', ''),
-            'equipment': row.get('equipment', ''),
-            'level': row.get('level', ''),
-            'rating': row.get('rating') if pd.notna(row.get('rating')) else None,
-            'similarity_score': round(float(similarities[idx]), 4)
-        })
-    
-    return {"similar_exercises": results}
+    try:
+        results = recommendation_model.get_similar_exercises(exercise_id, limit)
+        return {"similar_exercises": results}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        print(f"Error getting similar exercises: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

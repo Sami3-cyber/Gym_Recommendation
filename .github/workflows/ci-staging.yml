@@ -42,61 +42,50 @@ jobs:
           cd backend
           pytest tests/ -v --tb=short
 
-  # Build and push Docker images
-  docker-build-push:
-    name: Build & Push Docker Images
+  # Build frontend to verify it compiles
+  frontend-build:
+    name: Frontend Build
     runs-on: ubuntu-latest
-    needs: test
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Build and push backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:staging
-            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
 
-      - name: Build and push frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:staging
-            ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            VITE_API_URL=${{ secrets.STAGING_API_URL }}
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+        env:
+          VITE_API_URL: http://localhost:8000
 
-  # Deploy to staging environment
-  deploy-staging:
-    name: Deploy to Staging
+  # Auto-push to production branch (main) after all tests pass
+  push-to-production:
+    name: Push to Production
     runs-on: ubuntu-latest
-    needs: docker-build-push
-    environment: staging
+    needs: [test, frontend-build]
     
     steps:
-      - name: Deploy notification
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to main branch
         run: |
-          echo "🚀 Docker images pushed to DockerHub"
-          echo "Backend: ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:staging"
-          echo "Frontend: ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:staging"
-          echo ""
-          echo "To deploy to staging, pull these images on your staging server"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git push origin staging:main --force
+          echo "✅ Successfully pushed staging to main (production)!"

@@ -18,15 +18,6 @@ CREATE TABLE IF NOT EXISTS favorites (
     UNIQUE(user_id, exercise_title)
 );
 
--- History Table
-CREATE TABLE IF NOT EXISTS history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    exercise_title TEXT NOT NULL,
-    completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    notes TEXT
-);
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
-CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id);

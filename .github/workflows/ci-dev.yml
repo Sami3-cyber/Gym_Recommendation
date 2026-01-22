@@ -160,3 +160,24 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             VITE_API_URL=http://localhost:8000
+
+  # Auto-push to staging branch (only on push to dev, not PR)
+  push-to-staging:
+    name: Push to Staging
+    runs-on: ubuntu-latest
+    needs: [backend-integration-tests, frontend-build]
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to staging branch
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git push origin dev:staging --force
+          echo "✅ Successfully pushed dev to staging!"

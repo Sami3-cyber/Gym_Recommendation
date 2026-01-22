@@ -9,6 +9,18 @@ import json
 import yaml
 import joblib
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from backend/.env
+env_path = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
+load_dotenv(env_path)
+
+# Configure MLFlow Authentication for DagsHub
+if os.getenv('DAGSHUB_USERNAME') and not os.getenv('MLFLOW_TRACKING_USERNAME'):
+    os.environ['MLFLOW_TRACKING_USERNAME'] = os.getenv('DAGSHUB_USERNAME')
+    
+if os.getenv('DAGSHUB_TOKEN') and not os.getenv('MLFLOW_TRACKING_PASSWORD'):
+    os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_TOKEN')
 
 import mlflow
 import mlflow.sklearn
@@ -85,9 +97,11 @@ def train_model():
             mlflow.log_metric('matrix_cols', metrics['matrix_shape'][1])
             
             # Log model
+            # Log model and register it
             mlflow.sklearn.log_model(
                 model.tfidf_vectorizer,
-                "tfidf_vectorizer"
+                "tfidf_vectorizer",
+                registered_model_name="GymRecommendation"
             )
             
             # Log artifacts

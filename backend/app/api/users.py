@@ -53,19 +53,7 @@ class Favorite(BaseModel):
     created_at: str
 
 
-class HistoryCreate(BaseModel):
-    """History creation model"""
-    exercise_title: str
-    notes: Optional[str] = None
 
-
-class History(BaseModel):
-    """History model"""
-    id: str
-    user_id: str
-    exercise_title: str
-    completed_at: str
-    notes: Optional[str] = None
 
 
 # --- Helpers ---
@@ -83,9 +71,10 @@ async def create_user(user: UserCreate):
     db = get_db()
     
     # Check if email exists
-    existing = db.table("users").select("id").eq("email", user.email).execute()
+    existing = db.table("users").select("*").eq("email", user.email).execute()
     if existing.data:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        # User exists, treat as login
+        return User(**existing.data[0])
     
     user_id = str(uuid4())
     new_user = {
@@ -206,43 +195,4 @@ async def remove_favorite(user_id: str, favorite_id: str):
     return {"message": "Favorite removed successfully"}
 
 
-# --- History Endpoints ---
 
-@router.get("/{user_id}/history", response_model=List[History])
-async def get_history(user_id: str):
-    db = get_db()
-    res = db.table("history").select("*").eq("user_id", user_id).order("completed_at", desc=True).execute()
-    return [History(**h) for h in res.data]
-
-
-@router.post("/{user_id}/history", response_model=History)
-async def add_history(user_id: str, history: HistoryCreate):
-    db = get_db()
-    
-    new_history = {
-        "id": str(uuid4()),
-        "user_id": user_id,
-        "exercise_title": history.exercise_title,
-        "completed_at": datetime.now().isoformat(),
-        "notes": history.notes
-    }
-    
-    try:
-        res = db.table("history").insert(new_history).execute()
-        return History(**res.data[0])
-    except Exception as e:
-        if "foreign key constraint" in str(e).lower():
-             raise HTTPException(status_code=404, detail="User not found")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/{user_id}/history/{history_id}")
-async def remove_history(user_id: str, history_id: str):
-    db = get_db()
-    
-    res = db.table("history").delete().eq("id", history_id).eq("user_id", user_id).execute()
-    
-    if not res.data:
-        raise HTTPException(status_code=404, detail="History entry not found")
-        
-    return {"message": "History entry removed successfully"}

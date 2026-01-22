@@ -42,13 +42,6 @@ class GymRecommendationModel:
     def fit(self, df: pd.DataFrame, log_to_mlflow: bool = False) -> 'GymRecommendationModel':
         """
         Fit the recommendation model on exercise data.
-        
-        Args:
-            df: DataFrame with exercise data
-            log_to_mlflow: Whether to log the model to MLFlow
-            
-        Returns:
-            self
         """
         self.df = df.copy()
         
@@ -127,20 +120,11 @@ class GymRecommendationModel:
     ) -> List[Dict[str, Any]]:
         """
         Get exercise recommendations based on user preferences.
-        
-        Args:
-            body_part: Target body part
-            equipment: Available equipment
-            level: Experience level
-            exercise_type: Type of exercise
-            limit: Maximum number of recommendations
-            exclude_exercises: Exercises to exclude
-            
-        Returns:
-            List of recommended exercises with scores
         """
         if not self.is_fitted:
             raise ValueError("Model must be fitted before making recommendations")
+            
+        print("DEBUG: Executing robust recommend method")
         
         # Start with all exercises
         mask = pd.Series([True] * len(self.df), index=self.df.index)
@@ -187,16 +171,33 @@ class GymRecommendationModel:
         # Return top results
         results = []
         for idx, row in filtered_df.head(limit).iterrows():
+            
+            # Robust field extraction
+            def get_val(key):
+                val = row.get(key)
+                if pd.isna(val):
+                    return None
+                return str(val) if val is not None else None
+
+            def get_float(key):
+                val = row.get(key)
+                if pd.isna(val):
+                    return None
+                try:
+                    return float(val)
+                except:
+                    return None
+
             results.append({
                 'id': int(idx),
-                'title': row.get('title', ''),
-                'description': row.get('desc', ''),
-                'type': row.get('type', ''),
-                'body_part': row.get('bodypart', ''),
-                'equipment': row.get('equipment', ''),
-                'level': row.get('level', ''),
-                'rating': float(row['rating']) if pd.notna(row.get('rating')) else None,
-                'similarity_score': round(float(row['similarity']), 4)
+                'title': get_val('title') or '',
+                'description': get_val('desc'),
+                'type': get_val('type'),
+                'body_part': get_val('bodypart'),
+                'equipment': get_val('equipment'),
+                'level': get_val('level'),
+                'rating': get_float('rating'),
+                'similarity_score': round(float(row.get('similarity', 0)), 4)
             })
         
         return results
@@ -204,13 +205,6 @@ class GymRecommendationModel:
     def get_similar_exercises(self, exercise_id: int, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Get exercises similar to a given exercise.
-        
-        Args:
-            exercise_id: ID of the exercise
-            limit: Maximum number of similar exercises
-            
-        Returns:
-            List of similar exercises with similarity scores
         """
         if not self.is_fitted:
             raise ValueError("Model must be fitted first")
@@ -227,15 +221,32 @@ class GymRecommendationModel:
         results = []
         for idx in similar_indices:
             row = self.df.iloc[idx]
+            
+            # Robust field extraction
+            def get_val(key):
+                val = row.get(key)
+                if pd.isna(val):
+                    return None
+                return str(val) if val is not None else None
+
+            def get_float(key):
+                val = row.get(key)
+                if pd.isna(val):
+                    return None
+                try:
+                    return float(val)
+                except:
+                    return None
+
             results.append({
                 'id': int(idx),
-                'title': row.get('title', ''),
-                'description': row.get('desc', ''),
-                'type': row.get('type', ''),
-                'body_part': row.get('bodypart', ''),
-                'equipment': row.get('equipment', ''),
-                'level': row.get('level', ''),
-                'rating': float(row['rating']) if pd.notna(row.get('rating')) else None,
+                'title': get_val('title') or '',
+                'description': get_val('desc'),
+                'type': get_val('type'),
+                'body_part': get_val('bodypart'),
+                'equipment': get_val('equipment'),
+                'level': get_val('level'),
+                'rating': get_float('rating'),
                 'similarity_score': round(float(similarities[idx]), 4)
             })
         

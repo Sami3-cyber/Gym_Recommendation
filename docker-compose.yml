@@ -13,8 +13,11 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - CORS_ORIGINS=http://localhost:3000,http://localhost:80,http://frontend:80
+    env_file:
+      - ./backend/.env
     volumes:
       - ./ml/data:/app/ml_data:ro
+      - ./ml/models:/app/ml_models:ro
     networks:
       - gym-network
     restart: unless-stopped

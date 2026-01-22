@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { exercisesApi, recommendationsApi } from '../services/api';
+import { exercisesApi, recommendationsApi, usersApi } from '../services/api';
 import ExerciseCard from '../components/ExerciseCard';
 
 function Recommend() {
@@ -22,9 +22,11 @@ function Recommend() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [hasSearched, setHasSearched] = useState(false);
+    const [favorites, setFavorites] = useState([]);
 
     useEffect(() => {
         loadFilters();
+        loadFavorites();
     }, []);
 
     const loadFilters = async () => {
@@ -38,6 +40,40 @@ function Recommend() {
             });
         } catch (err) {
             console.error('Error loading filters:', err);
+        }
+    };
+
+    const loadFavorites = async () => {
+        const userId = localStorage.getItem('gymrec_user_id');
+        if (!userId) return;
+
+        try {
+            const data = await usersApi.getFavorites(userId);
+            setFavorites(data);
+        } catch (err) {
+            console.error('Error loading favorites:', err);
+        }
+    };
+
+    const handleToggleFavorite = async (exercise) => {
+        const userId = localStorage.getItem('gymrec_user_id');
+        if (!userId) {
+            alert("Please create a profile to save favorites!");
+            return;
+        }
+
+        const fav = favorites.find(f => f.exercise_title === exercise.title);
+
+        try {
+            if (fav) {
+                await usersApi.removeFavorite(userId, fav.id);
+                setFavorites(prev => prev.filter(f => f.id !== fav.id));
+            } else {
+                const newFav = await usersApi.addFavorite(userId, exercise.title);
+                setFavorites(prev => [...prev, newFav]);
+            }
+        } catch (err) {
+            console.error('Error toggling favorite:', err);
         }
     };
 
@@ -207,6 +243,8 @@ function Recommend() {
                                     key={exercise.id}
                                     exercise={exercise}
                                     showSimilarity={true}
+                                    isFavorite={favorites.some(f => f.exercise_title === exercise.title)}
+                                    onToggle={handleToggleFavorite}
                                 />
                             ))}
                         </div>

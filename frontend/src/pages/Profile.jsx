@@ -4,7 +4,7 @@ import { usersApi } from '../services/api';
 function Profile() {
     const [user, setUser] = useState(null);
     const [favorites, setFavorites] = useState([]);
-    const [history, setHistory] = useState([]);
+
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
@@ -26,7 +26,7 @@ function Profile() {
             const userData = await usersApi.getUser(userId);
             setUser(userData);
             loadFavorites(userId);
-            loadHistory(userId);
+
         } catch (err) {
             console.error('Error loading user:', err);
             localStorage.removeItem('gymrec_user_id');
@@ -42,14 +42,7 @@ function Profile() {
         }
     };
 
-    const loadHistory = async (userId) => {
-        try {
-            const data = await usersApi.getHistory(userId);
-            setHistory(data);
-        } catch (err) {
-            console.error('Error loading history:', err);
-        }
-    };
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -69,7 +62,7 @@ function Profile() {
             setIsCreating(false);
         } catch (err) {
             console.error('Error creating profile:', err);
-            alert('Failed to create profile. Please try again.');
+            alert(`Failed to create profile: ${err.response?.data?.detail || err.message}`);
         } finally {
             setLoading(false);
         }
@@ -79,7 +72,7 @@ function Profile() {
         localStorage.removeItem('gymrec_user_id');
         setUser(null);
         setFavorites([]);
-        setHistory([]);
+
     };
 
     const handleRemoveFavorite = async (favoriteId) => {
@@ -225,29 +218,7 @@ function Profile() {
                     )}
                 </div>
 
-                <div className="card">
-                    <h3 style={{ marginBottom: '1rem' }}>📊 Workout History</h3>
-                    {history.length > 0 ? (
-                        <ul style={{ listStyle: 'none', padding: 0 }}>
-                            {history.slice(0, 10).map(h => (
-                                <li key={h.id} style={{
-                                    padding: '0.75rem',
-                                    borderBottom: '1px solid var(--border-color)'
-                                }}>
-                                    <div style={{ fontWeight: 600 }}>{h.exercise_title}</div>
-                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                                        {new Date(h.completed_at).toLocaleDateString()}
-                                        {h.notes && ` - ${h.notes}`}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p style={{ color: 'var(--text-muted)' }}>
-                            No workout history yet. Start exercising!
-                        </p>
-                    )}
-                </div>
+
             </section>
         </div>
     );

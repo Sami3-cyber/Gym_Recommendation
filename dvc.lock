@@ -1,0 +1,40 @@
+schema: '2.0'
+stages:
+  prepare_data:
+    cmd: python ml/create_dataset.py
+    deps:
+    - path: ml/create_dataset.py
+      hash: md5
+      md5: 9984468ec796ee3209e47a6287f8bd8f
+      size: 17963
+    outs:
+    - path: ml/data/megaGymDataset.csv
+      hash: md5
+      md5: 9d42cd4e7715bd4d1e5f28b1742ffe47
+      size: 8390
+  train_model:
+    cmd: python ml/train_model.py
+    deps:
+    - path: ml/data/megaGymDataset.csv
+      hash: md5
+      md5: 9d42cd4e7715bd4d1e5f28b1742ffe47
+      size: 8390
+    - path: ml/train_model.py
+      hash: md5
+      md5: 24febdeb70158c797964b5e3cbdc7e64
+      size: 3933
+    params:
+      ml/params.yaml:
+        model.max_features: 5000
+        model.ngram_range:
+        - 1
+        - 2
+    outs:
+    - path: ml/metrics.json
+      hash: md5
+      md5: 475fc26fb078690e66c448c5ef9c6ab7
+      size: 181
+    - path: ml/models/recommendation_model.joblib
+      hash: md5
+      md5: 81236e67613c9421c6d94c8d10d9057d
+      size: 35378

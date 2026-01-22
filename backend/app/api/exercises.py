@@ -10,7 +10,26 @@ import os
 router = APIRouter()
 
 # Path to the exercise dataset
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "data", "megaGymDataset.csv")
+# Path to the exercise dataset
+def get_data_path():
+    # Priority 1: Docker/Production path (ml_data in app root)
+    docker_path = os.path.join(os.getcwd(), "ml_data", "megaGymDataset.csv")
+    if os.path.exists(docker_path):
+        return docker_path
+    
+    # Priority 2: Local development path (relative to this file)
+    local_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "data", "megaGymDataset.csv")
+    if os.path.exists(local_path):
+        return local_path
+    
+    # Priority 3: CI/CD path inside backend
+    ci_path = os.path.join(os.getcwd(), "backend", "ml_data", "megaGymDataset.csv")
+    if os.path.exists(ci_path):
+        return ci_path
+        
+    return local_path
+
+DATA_PATH = get_data_path()
 
 
 class Exercise(BaseModel):
@@ -83,14 +102,14 @@ async def get_exercises(
     for idx, row in df_page.iterrows():
         exercises.append(Exercise(
             id=idx,
-            title=row.get('title', ''),
-            description=row.get('desc', ''),
-            type=row.get('type', ''),
-            body_part=row.get('bodypart', ''),
-            equipment=row.get('equipment', ''),
-            level=row.get('level', ''),
-            rating=row.get('rating') if pd.notna(row.get('rating')) else None,
-            rating_desc=row.get('ratingdesc', '')
+            title=str(row.get('title')) if pd.notna(row.get('title')) else "Unknown",
+            description=str(row.get('desc')) if pd.notna(row.get('desc')) else None,
+            type=str(row.get('type')) if pd.notna(row.get('type')) else None,
+            body_part=str(row.get('bodypart')) if pd.notna(row.get('bodypart')) else None,
+            equipment=str(row.get('equipment')) if pd.notna(row.get('equipment')) else None,
+            level=str(row.get('level')) if pd.notna(row.get('level')) else None,
+            rating=float(row.get('rating')) if pd.notna(row.get('rating')) else None,
+            rating_desc=str(row.get('ratingdesc')) if pd.notna(row.get('ratingdesc')) else None
         ))
     
     return ExerciseListResponse(
@@ -138,12 +157,12 @@ async def get_exercise(exercise_id: int):
     
     return Exercise(
         id=exercise_id,
-        title=row.get('title', ''),
-        description=row.get('desc', ''),
-        type=row.get('type', ''),
-        body_part=row.get('bodypart', ''),
-        equipment=row.get('equipment', ''),
-        level=row.get('level', ''),
-        rating=row.get('rating') if pd.notna(row.get('rating')) else None,
-        rating_desc=row.get('ratingdesc', '')
+        title=str(row.get('title')) if pd.notna(row.get('title')) else "Unknown",
+        description=str(row.get('desc')) if pd.notna(row.get('desc')) else None,
+        type=str(row.get('type')) if pd.notna(row.get('type')) else None,
+        body_part=str(row.get('bodypart')) if pd.notna(row.get('bodypart')) else None,
+        equipment=str(row.get('equipment')) if pd.notna(row.get('equipment')) else None,
+        level=str(row.get('level')) if pd.notna(row.get('level')) else None,
+        rating=float(row.get('rating')) if pd.notna(row.get('rating')) else None,
+        rating_desc=str(row.get('ratingdesc')) if pd.notna(row.get('ratingdesc')) else None
     )

@@ -1,0 +1,4 @@
+[core]
+    remote = origin
+['remote "origin"']
+    url = https://dagshub.com/samisayedahmad2002/Gym_Recommendation.dvc

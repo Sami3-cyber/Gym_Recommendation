@@ -79,19 +79,7 @@ export const usersApi = {
         return response.data;
     },
 
-    // History
-    getHistory: async (userId) => {
-        const response = await api.get(`/api/users/${userId}/history`);
-        return response.data;
-    },
 
-    addHistory: async (userId, exerciseTitle, notes = '') => {
-        const response = await api.post(`/api/users/${userId}/history`, {
-            exercise_title: exerciseTitle,
-            notes
-        });
-        return response.data;
-    },
 };
 
 // Health check
