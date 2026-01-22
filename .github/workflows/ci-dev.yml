@@ -9,6 +9,9 @@ on:
   push:
     branches: [dev]
 
+permissions:
+  contents: write
+
 env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '20'
