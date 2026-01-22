@@ -79,30 +79,42 @@ jobs:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
-          # Export env vars explicitly
+          # Create python script to fetch model
+          cat << 'EOF' > fetch_model_script.py
+          import mlflow
+          import os
+          from mlflow.tracking import MlflowClient
+
+          try:
+              tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+              if not tracking_uri:
+                  print("MLFLOW_TRACKING_URI not set")
+                  exit(0)
+
+              mlflow.set_tracking_uri(tracking_uri)
+              client = MlflowClient()
+              versions = client.get_latest_versions('GymRecommendation', stages=['None', 'Staging', 'Production'])
+              
+              if not versions:
+                  print("No versions found")
+              else:
+                  # Sort to get the latest
+                  latest_version = sorted(versions, key=lambda x: int(x.version))[-1]
+                  print(latest_version.run_id)
+          except Exception as e:
+              print(f"Error: {e}")
+          EOF
+
+          # Run the script
           export MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}"
           export MLFLOW_TRACKING_USERNAME="${{ secrets.DAGSHUB_USERNAME }}"
           export MLFLOW_TRACKING_PASSWORD="${{ secrets.DAGSHUB_TOKEN }}"
           
           echo "Fetching latest model version..."
-          RUN_ID=$(python -c "
-          import mlflow
-          from mlflow.tracking import MlflowClient
-          try:
-              mlflow.set_tracking_uri('${{ secrets.MLFLOW_TRACKING_URI }}')
-              client = MlflowClient()
-              versions = client.get_latest_versions('GymRecommendation', stages=['None', 'Staging', 'Production'])
-              if not versions:
-                  print('')
-              else:
-                  latest_version = sorted(versions, key=lambda x: int(x.version))[-1]
-                  print(latest_version.run_id)
-          except Exception as e:
-              print('')
-          ")
+          RUN_ID=$(python fetch_model_script.py)
           
-          if [ -z "$RUN_ID" ]; then
-            echo "⚠️ No registered model found. Skipping download."
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "No versions found" ] || [[ "$RUN_ID" == "Error"* ]]; then
+            echo "⚠️ No registered model found or error occurred. Skipping download. Output: $RUN_ID"
             exit 0
           fi
           
@@ -170,9 +182,8 @@ jobs:
         uses: actions/checkout@v4
 
       # Option 1: Deploy to Railway
-      # Option 1: Deploy to Railway
       - name: Deploy to Railway
-        if: secrets.RAILWAY_TOKEN != ''
+        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
@@ -183,7 +194,7 @@ jobs:
 
       # Option 2: Deploy to Koyeb (if Railway not configured)
       - name: Deploy to Koyeb
-        if: secrets.KOYEB_TOKEN != ''
+        if: ${{ secrets.KOYEB_TOKEN != '' }}
         env:
           KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
         run: |
