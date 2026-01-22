@@ -13,6 +13,11 @@ from app.main import app
 
 client = TestClient(app)
 
+# Check if ML model is available for recommendation tests
+MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'app', 'api', '..', '..', '..', 'ml', 'models', 'recommendation_model.joblib')
+MODEL_AVAILABLE = os.path.exists(MODEL_PATH)
+skip_if_no_model = pytest.mark.skipif(not MODEL_AVAILABLE, reason="ML model not available in CI")
+
 
 class TestHealthEndpoints:
     """Test health check endpoints"""
@@ -75,6 +80,7 @@ class TestExercisesAPI:
 class TestRecommendationsAPI:
     """Test recommendations API endpoints"""
     
+    @skip_if_no_model
     def test_get_recommendations_basic(self):
         """Test basic recommendations endpoint"""
         response = client.post(
@@ -88,6 +94,7 @@ class TestRecommendationsAPI:
         assert "total_found" in data
         assert "filters_applied" in data
     
+    @skip_if_no_model
     def test_get_recommendations_with_filters(self):
         """Test recommendations with filters"""
         response = client.post(
