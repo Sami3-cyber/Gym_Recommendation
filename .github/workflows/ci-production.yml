@@ -175,32 +175,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Option 1: Deploy to Railway
-      - name: Deploy to Railway
-        if: env.RAILWAY_TOKEN != ''
-        run: |
-          npm install -g @railway/cli
-          railway up --service=backend
-          railway up --service=frontend
-        continue-on-error: true
-
-      # Option 2: Deploy to Koyeb
-      - name: Deploy to Koyeb
+      # Deploy Backend to Koyeb
+      - name: Deploy Backend to Koyeb
         if: env.KOYEB_TOKEN != ''
         run: |
           curl -fsSL https://koyeb.com/install.sh | bash
           export PATH="$HOME/.koyeb/bin:$PATH"
-          
-          # Redeploy services
           echo "Redeploying Backend..."
-          koyeb service redeploy gym-backend || echo "Backend redeploy failed (App might not exist yet)"
-          
-          echo "Redeploying Frontend..."
-          koyeb service redeploy gym-frontend || echo "Frontend redeploy failed (App might not exist yet)"
+          koyeb service redeploy gym-backend || echo "⚠️ Backend redeploy failed (App might not exist)"
+        continue-on-error: true
+
+      # Deploy Frontend to Railway
+      - name: Deploy Frontend to Railway
+        if: env.RAILWAY_TOKEN != ''
+        run: |
+          npm install -g @railway/cli
+          # Only deploy the frontend service to Railway
+          railway up --service=frontend
         continue-on-error: true
 
       - name: Deployment Summary
         run: |
           echo "🚀 Production Deployment Complete!"
-          echo "Backend: ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-backend:latest"
-          echo "Frontend: ${{ env.DOCKERHUB_USERNAME }}/gym-recommendation-frontend:latest"
+          if [ "${{ env.KOYEB_TOKEN }}" != "" ]; then
+            echo "✅ Backend triggered on Koyeb"
+          fi
+          if [ "${{ env.RAILWAY_TOKEN }}" != "" ]; then
+            echo "✅ Frontend triggered on Railway"
+          fi
