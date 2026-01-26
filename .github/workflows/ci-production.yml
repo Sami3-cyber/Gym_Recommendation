@@ -182,7 +182,7 @@ jobs:
           curl -fsSL https://koyeb.com/install.sh | bash
           export PATH="$HOME/.koyeb/bin:$PATH"
           echo "Redeploying Backend..."
-          koyeb service redeploy gym-backend || echo "⚠️ Backend redeploy failed (App might not exist)"
+          koyeb service redeploy smoggy-freddy/gym-backend || echo "⚠️ Backend redeploy failed (App might not exist)"
         continue-on-error: true
 
       # Deploy Frontend to Railway
