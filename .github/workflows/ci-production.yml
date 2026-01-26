@@ -11,6 +11,9 @@ env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '20'
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  # Map secrets to env vars so they can be checked in 'if' conditionals
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+  KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
 
 jobs:
   # Run all tests
@@ -174,9 +177,7 @@ jobs:
 
       # Option 1: Deploy to Railway
       - name: Deploy to Railway
-        if: secrets.RAILWAY_TOKEN != ''
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        if: env.RAILWAY_TOKEN != ''
         run: |
           npm install -g @railway/cli
           railway up --service=backend
@@ -185,9 +186,7 @@ jobs:
 
       # Option 2: Deploy to Koyeb
       - name: Deploy to Koyeb
-        if: secrets.KOYEB_TOKEN != ''
-        env:
-          KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
+        if: env.KOYEB_TOKEN != ''
         run: |
           curl -fsSL https://koyeb.com/install.sh | bash
           export PATH="$HOME/.koyeb/bin:$PATH"
