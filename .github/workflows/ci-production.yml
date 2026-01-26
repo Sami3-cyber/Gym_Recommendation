@@ -12,7 +12,7 @@ env:
   NODE_VERSION: '20'
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   # Map secrets to env vars so they can be checked in 'if' conditionals
-  RAILWAY_WEBHOOK_URL: ${{ secrets.RAILWAY_WEBHOOK_URL }}
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
   KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
 
 jobs:
@@ -185,12 +185,14 @@ jobs:
           koyeb service redeploy smoggy-freddy/gym-backend || echo "⚠️ Backend redeploy failed (App might not exist)"
         continue-on-error: true
 
-      # Deploy Frontend to Railway (via Webhook)
+      # Deploy Frontend to Railway (via CLI)
       - name: Deploy Frontend to Railway
-        if: env.RAILWAY_WEBHOOK_URL != ''
+        if: env.RAILWAY_TOKEN != ''
         run: |
-          echo "Triggering Railway Deployment..."
-          curl -X POST "${{ secrets.RAILWAY_WEBHOOK_URL }}" || echo "⚠️ Frontend trigger failed"
+          npm install -g @railway/cli
+          cd frontend
+          # Deploy from the specific directory so it finds the Dockerfile
+          railway up --service=frontend --detach
         continue-on-error: true
 
       - name: Deployment Summary
@@ -199,6 +201,6 @@ jobs:
           if [ "${{ env.KOYEB_TOKEN }}" != "" ]; then
             echo "✅ Backend triggered on Koyeb"
           fi
-          if [ "${{ env.RAILWAY_WEBHOOK_URL }}" != "" ]; then
+          if [ "${{ env.RAILWAY_TOKEN }}" != "" ]; then
             echo "✅ Frontend triggered on Railway"
           fi
