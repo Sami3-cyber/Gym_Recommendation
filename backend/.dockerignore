@@ -20,5 +20,5 @@ coverage.xml
 .gitignore
 .pytest_cache/
 .mypy_cache/
-ml_data/
+
 Dockerfile
