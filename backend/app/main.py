@@ -1,5 +1,6 @@
 """
-Gym Exercise Recommendation API - Main Entry Point
+Gym Exercise Recommendation API - Main Entry Point 
+and testing pull request
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
