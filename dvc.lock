@@ -1,17 +1,5 @@
 schema: '2.0'
 stages:
-  prepare_data:
-    cmd: python ml/create_dataset.py
-    deps:
-    - path: ml/create_dataset.py
-      hash: md5
-      md5: 9984468ec796ee3209e47a6287f8bd8f
-      size: 17963
-    outs:
-    - path: ml/data/megaGymDataset.csv
-      hash: md5
-      md5: 9d42cd4e7715bd4d1e5f28b1742ffe47
-      size: 8390
   train_model:
     cmd: python ml/train_model.py
     deps:
