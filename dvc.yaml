@@ -1,5 +1,4 @@
-# DVC Configuration
-# Data Version Control for ML data and models
+
 
 stages:
   train_model:

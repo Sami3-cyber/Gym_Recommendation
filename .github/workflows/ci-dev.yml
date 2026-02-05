@@ -17,7 +17,6 @@ env:
   NODE_VERSION: '20'
 
 jobs:
-  # Lint and format check for backend
   backend-lint:
     name: Backend Lint & Format
     runs-on: ubuntu-latest
@@ -49,7 +48,6 @@ jobs:
           black --check app/ --line-length=120
         continue-on-error: true
 
-  # Backend unit tests
   backend-unit-tests:
     name: Backend Unit Tests
     runs-on: ubuntu-latest
@@ -73,7 +71,6 @@ jobs:
           cd backend
           pytest tests/test_unit.py -v --tb=short
 
-  # Backend integration tests
   backend-integration-tests:
     name: Backend Integration Tests
     runs-on: ubuntu-latest
@@ -113,7 +110,6 @@ jobs:
           cd backend
           pytest tests/test_integration.py -v --tb=short
 
-  # Frontend lint and build
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -141,7 +137,6 @@ jobs:
         env:
           VITE_API_URL: http://localhost:8000
 
-  # Build Docker images (on push to dev only)
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -175,7 +170,6 @@ jobs:
           build-args: |
             VITE_API_URL=http://localhost:8000
 
-  # Auto-push to staging branch (only on push to dev, not PR)
   push-to-staging:
     name: Push to Staging
     runs-on: ubuntu-latest

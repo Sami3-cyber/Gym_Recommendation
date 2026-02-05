@@ -1,5 +1,3 @@
-# CI/CD Pipeline for Staging Branch
-# Triggers on push to staging branch
 
 name: Staging CI/CD
 
@@ -16,7 +14,6 @@ env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
-  # Run all tests
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -45,7 +42,6 @@ jobs:
           cd backend
           pytest tests/ -v --tb=short
 
-  # Build frontend to verify it compiles
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -73,7 +69,6 @@ jobs:
         env:
           VITE_API_URL: http://localhost:8000
 
-  # Auto-push to production branch (main) after all tests pass
   push-to-production:
     name: Push to Production
     runs-on: ubuntu-latest
