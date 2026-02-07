@@ -1,5 +1,4 @@
-# CI/CD Pipeline for Staging Branch
-# Triggers on push to staging branch
+# CI/CD Pipeline for Staging Branch.
 
 name: Staging CI/CD
 
