@@ -37,7 +37,7 @@ jobs:
           dvc remote modify origin --local auth basic
           dvc remote modify origin --local user $DAGSHUB_USERNAME
           dvc remote modify origin --local password $DAGSHUB_TOKEN
-          dvc pull ml/data/megaGymDataset.csv || echo "⚠️ DVC pull failed"
+          dvc pull ml/data/megaGymDataset.csv || echo " DVC pull failed"
 
       - name: Install backend dependencies
         run: |
@@ -103,7 +103,7 @@ jobs:
           ")
           
           if [ -z "$RUN_ID" ]; then
-            echo "⚠️ No registered model found. Skipping download."
+            echo "No registered model found. Skipping download."
             exit 0
           fi
           
@@ -114,7 +114,7 @@ jobs:
           if [ -f "backend/app/ml/models/model.joblib" ]; then
               mv backend/app/ml/models/model.joblib backend/app/ml/models/recommendation_model.joblib
           fi
-          echo "✅ Model downloaded successfully"
+          echo "Model downloaded successfully"
 
   docker-build-push:
     name: Build & Push Docker Images
@@ -139,13 +139,13 @@ jobs:
           dvc remote modify origin --local auth basic
           dvc remote modify origin --local user $DAGSHUB_USERNAME
           dvc remote modify origin --local password $DAGSHUB_TOKEN
-          dvc pull ml/data/megaGymDataset.csv || echo "⚠️ DVC pull failed"
+          dvc pull ml/data/megaGymDataset.csv || echo "DVC pull failed"
 
       - name: Copy dataset to backend build context
         run: |
           mkdir -p backend/ml_data
           cp ml/data/megaGymDataset.csv backend/ml_data/
-          echo "✅ Dataset copied to backend/ml_data/"
+          echo "Dataset copied to backend/ml_data/"
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -194,7 +194,7 @@ jobs:
           curl -fsSL https://koyeb.com/install.sh | bash
           export PATH="$HOME/.koyeb/bin:$PATH"
           echo "Redeploying Backend..."
-          koyeb service redeploy smoggy-freddy/gym-backend || echo "⚠️ Backend redeploy failed (App might not exist)"
+          koyeb service redeploy smoggy-freddy/gym-backend || echo "Backend redeploy failed (App might not exist)"
         continue-on-error: true
 
       # Deploy Frontend to Railway 
