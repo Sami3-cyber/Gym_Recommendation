@@ -90,4 +90,4 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git push origin staging:main --force
-          echo "✅ Successfully pushed staging to main (production)!"
+          echo "Successfully pushed staging to main (production)!"
