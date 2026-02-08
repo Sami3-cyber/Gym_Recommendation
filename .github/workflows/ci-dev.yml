@@ -1,5 +1,5 @@
 # CI/CD Pipeline for Dev Branch
-# Triggers on pull requests and pushes to dev branch
+
 
 name: Development CI
 
